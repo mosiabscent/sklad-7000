@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>Склад ковров — по размерам</title>
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel2:#1e222b;
+    --line:#2a2f3a; --text:#e8eaed; --muted:#8a8f98;
+    --accent:#d4a24c; --accent-dim:#8a6a2c; --danger:#c85454;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:'Segoe UI',Arial,sans-serif;
+    padding:32px 24px 60px;
+  }
+  h1{font-size:22px; font-weight:600; margin:0 0 4px;}
+  .sub{color:var(--muted); font-size:13px; margin-bottom:18px; max-width:640px;}
+  .mode-badge{
+    display:inline-block; font-size:11px; font-weight:700; letter-spacing:.4px;
+    padding:3px 9px; border-radius:20px; margin-bottom:18px;
+  }
+  .mode-edit{background:rgba(212,162,76,.18); color:var(--accent);}
+  .mode-view{background:rgba(138,143,152,.18); color:var(--muted);}
+
+  .gate{
+    max-width:340px; background:var(--panel); border:1px solid var(--line);
+    border-radius:10px; padding:20px; margin-bottom:22px;
+  }
+  .gate p{font-size:13px; color:var(--muted); margin:0 0 10px;}
+  .gate .row{display:flex; gap:8px;}
+  .gate input{
+    flex:1; background:var(--panel2); border:1px solid var(--line);
+    color:var(--text); border-radius:8px; padding:9px 10px; font-size:14px;
+  }
+  .link{
+    background:none; border:none; color:var(--accent); font-size:12px;
+    cursor:pointer; padding:0; margin-top:10px; text-decoration:underline;
+  }
+
+  .toolbar{display:flex; gap:10px; align-items:center; flex-wrap:wrap; max-width:720px; margin-bottom:12px;}
+  .search{
+    flex:1; min-width:200px; background:var(--panel2); border:1px solid var(--line);
+    color:var(--text); border-radius:8px; padding:9px 12px; font-size:14px;
+  }
+  .add-size-form{display:flex; gap:6px; align-items:center;}
+  .add-size-form input{
+    width:110px; background:var(--panel2); border:1px solid var(--line);
+    color:var(--text); border-radius:8px; padding:9px 10px; font-size:14px;
+  }
+  .history-bar{display:flex; gap:8px; max-width:720px; margin-bottom:20px;}
+  .hist-btn{
+    background:var(--panel2); border:1px solid var(--line); color:var(--text);
+    font-size:13px; padding:7px 12px; border-radius:8px; cursor:pointer;
+  }
+  .hist-btn:disabled{opacity:.35; cursor:default;}
+  .hist-btn:not(:disabled):hover{background:#262b36;}
+
+  .sync-status{font-size:11px; color:var(--muted); margin-bottom:16px;}
+  .sync-status.err{color:var(--danger);}
+
+  .sizes{max-width:720px; display:flex; flex-direction:column; gap:8px;}
+  .size-block{background:var(--panel); border:1px solid var(--line); border-radius:10px; overflow:hidden;}
+  .size-head{display:flex; align-items:center; justify-content:space-between; padding:13px 16px; cursor:pointer; user-select:none;}
+  .size-head:hover{background:var(--panel2);}
+  .size-title{font-size:16px; font-weight:700; letter-spacing:.3px;}
+  .size-title-input{
+    font-size:16px; font-weight:700; letter-spacing:.3px;
+    background:none; border:none; color:var(--text); border-bottom:1px dashed transparent;
+    padding:0; width:90px; min-width:0;
+  }
+  .size-title-input:hover, .size-title-input:focus{ border-bottom-color:var(--muted); outline:none; }
+  .size-meta{color:var(--muted); font-size:12px;}
+  .chevron{transition:transform .2s ease; color:var(--muted); font-size:14px;}
+  .size-block.open .chevron{transform:rotate(90deg);}
+  .head-right{display:flex; align-items:center; gap:10px;}
+  .icon-btn{background:none; border:none; color:var(--muted); font-size:14px; cursor:pointer; padding:2px 5px; border-radius:5px; line-height:1;}
+  .icon-btn:hover{color:var(--text); background:rgba(255,255,255,.06);}
+  .icon-btn.danger:hover{color:var(--danger); background:rgba(200,84,84,.12);}
+
+  .size-body{max-height:0; overflow:hidden; transition:max-height .25s ease; border-top:1px solid transparent;}
+  .size-block.open .size-body{border-top-color:var(--line);}
+  .coll-list{display:flex; flex-direction:column;}
+  .coll-row{padding:9px 16px; border-bottom:1px solid var(--line); display:flex; flex-direction:column; gap:5px;}
+  .coll-row:last-child{border-bottom:none;}
+  .coll-top{display:flex; align-items:center; justify-content:space-between; gap:8px;}
+  .coll-name{font-size:14px; font-weight:400; flex:1;}
+  .coll-name-input{
+    font-size:14px; font-weight:400; flex:1; background:none; border:none; color:var(--text);
+    border-bottom:1px dashed transparent; padding:0; min-width:0;
+  }
+  .coll-name-input:hover, .coll-name-input:focus{ border-bottom-color:var(--muted); outline:none; }
+  .coll-meta-row{display:flex; align-items:center; gap:5px; flex-wrap:nowrap;}
+  .meta-input{
+    background:var(--panel2); border:1px solid var(--line); color:var(--muted);
+    border-radius:5px; padding:4px 5px; font-size:11px; width:44px; min-width:0; flex-shrink:1;
+  }
+  .meta-view{color:var(--muted); font-size:11px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .qty-input{
+    width:52px; background:var(--panel2); border:1px solid var(--line);
+    color:var(--accent); font-weight:600; border-radius:5px; padding:5px 6px; font-size:13px; text-align:right;
+    margin-left:auto; flex-shrink:0;
+  }
+  .qty-view{color:var(--accent); font-weight:600; font-size:13px; margin-left:auto; flex-shrink:0; white-space:nowrap;}
+  .unit{color:var(--muted); font-size:11px; flex-shrink:0;}
+
+  .add-coll-row{display:flex; flex-direction:column; gap:6px; padding:11px 16px; background:var(--panel2);}
+  .add-coll-row .line1, .add-coll-row .line2{display:flex; gap:5px;}
+  .add-coll-row input[type=text]{
+    flex:1; background:var(--panel); border:1px solid var(--line);
+    color:var(--text); border-radius:6px; padding:7px 9px; font-size:13px; min-width:0;
+  }
+  .add-coll-row .line2 input[type=text]{ font-size:11px; padding:6px 7px; }
+  .add-coll-row input[type=number]{
+    width:56px; background:var(--panel); border:1px solid var(--line);
+    color:var(--text); border-radius:6px; padding:7px 8px; font-size:13px; flex-shrink:0;
+  }
+  button{border:none; border-radius:6px; padding:7px 12px; font-size:13px; cursor:pointer; font-weight:600;}
+  .btn-primary{background:var(--accent-dim); color:#fff; flex-shrink:0;}
+  .btn-primary:hover{background:var(--accent);}
+  .empty{color:var(--muted); font-size:14px; padding:24px 0;}
+  .footer-note{margin-top:28px; font-size:12px; color:var(--muted); max-width:600px;}
+
+  .modal-overlay{
+    position:fixed; inset:0; background:rgba(0,0,0,.55);
+    display:flex; align-items:center; justify-content:center; z-index:1000;
+    padding:20px;
+  }
+  .modal-box{
+    background:var(--panel); border:1px solid var(--line); border-radius:12px;
+    padding:20px; max-width:360px; width:100%;
+  }
+  .modal-msg{font-size:14px; line-height:1.5; white-space:pre-line; margin-bottom:16px;}
+  .modal-actions{display:flex; gap:8px; justify-content:flex-end;}
+  .modal-cancel{background:var(--panel2); color:var(--text); border:1px solid var(--line);}
+  .modal-cancel:hover{background:#262b36;}
+</style>
+</head>
+<body>
+
+<h1>Склад ковров — по размерам</h1>
+<div class="sub">Размер — основной раздел, внутри — коллекции с кодом, цветом и ID (по желанию). Одинаковые названия никогда не объединяются автоматически.</div>
+<div id="modeBadge"></div>
+<div id="syncStatus" class="sync-status">Подключение к базе…</div>
+
+<div id="gate" class="gate" style="display:none;">
+  <p>Введите код редактора, чтобы вносить изменения. Без кода — только просмотр и поиск.</p>
+  <div class="row">
+    <input type="password" id="editCode" placeholder="Код редактора">
+    <button class="btn-primary" onclick="tryUnlock()">Войти</button>
+  </div>
+  <button class="link" onclick="continueAsViewer()">Продолжить как просмотр →</button>
+</div>
+
+<div id="toolbar" class="toolbar" style="display:none;">
+  <input class="search" id="search" placeholder="Поиск по размеру, коллекции, коду, цвету, ID…" oninput="render()">
+  <div class="add-size-form" id="addSizeForm">
+    <input type="text" id="newSize" placeholder="напр. 4x8">
+    <button class="btn-primary" onclick="addSize()">+ Размер</button>
+  </div>
+</div>
+
+<div id="historyBar" class="history-bar" style="display:none;">
+  <button class="hist-btn" id="undoBtn" onclick="undo()" disabled>↶ Отменить</button>
+  <button class="hist-btn" id="redoBtn" onclick="redo()" disabled>↷ Вернуть</button>
+</div>
+
+<div id="viewerSearchWrap" style="display:none; max-width:720px; margin-bottom:18px;">
+  <input class="search" id="searchViewer" placeholder="Поиск по размеру, коллекции, коду, цвету, ID…" oninput="render()" style="width:100%;">
+</div>
+
+<div id="sizes" class="sizes"></div>
+<div id="emptyMsg" class="empty" style="display:none;">Пока пусто.</div>
+
+<div class="footer-note" id="footerNote"></div>
+
+<div id="modalOverlay" class="modal-overlay" style="display:none;">
+  <div class="modal-box">
+    <div class="modal-msg" id="modalMsg"></div>
+    <div class="modal-actions" id="modalActions"></div>
+  </div>
+</div>
+
+<!-- ======================= FIREBASE ======================= -->
+<!-- Вставьте сюда свои ключи из Firebase Console → Project settings → General → "Your apps" -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+  import {
+    getFirestore, doc, getDoc, setDoc, onSnapshot
+  } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+
+  // ⬇⬇⬇ ЗАМЕНИТЕ на свои данные из Firebase Console ⬇⬇⬇
+  const firebaseConfig = {
+    apiKey: "AIzaSyBOlWHKt5G2owPr2k8VVMDVag7VTmvhilk",
+  authDomain: "sklad-osh-7000.firebaseapp.com",
+  projectId: "sklad-osh-7000",
+  storageBucket: "sklad-osh-7000.firebasestorage.app",
+  messagingSenderId: "643913341855",
+  appId: "1:643913341855:web:d66467f828232c2a263baa"
+  };
+  // ⬆⬆⬆ ЗАМЕНИТЕ на свои данные из Firebase Console ⬆⬆⬆
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+  const docRef = doc(db, "warehouse", "data");
+
+  window.__fb = { docRef, getDoc, setDoc, onSnapshot };
+</script>
+<!-- ========================================================= -->
+
+<script>
+const LOCAL_UNLOCK_KEY = "warehouse-unlocked-device";
+const LOCAL_OPEN_KEY = "warehouse-open-sizes";
+const DEFAULT_PASSWORD = "1234";
+
+let nextId = 1;
+function newId(){ return "id" + (nextId++) + "_" + Math.random().toString(36).slice(2,7); }
+
+function seedStore(){
+  const mk = (name, qty) => ({ id: newId(), name, qty, code:"", color:"", customId:"" });
+  return {
+    sizes: [
+      { id: newId(), label: "6x4", collections: [mk("IRAN 1200",2), mk("IRANI",22), mk("MIRACLE",2)] },
+      { id: newId(), label: "5x3", collections: [mk("IRANI",68), mk("SULTANA",18), mk("MIRACLE",16)] },
+      { id: newId(), label: "4x3", collections: [mk("SULTANA",30), mk("IRAN 1200",26), mk("MIRACLE",21)] },
+      { id: newId(), label: "3x2", collections: [mk("IRANI",77), mk("TWINCE",54), mk("MIRACLE",46)] },
+      { id: newId(), label: "2x1", collections: [mk("MIRACLE",34), mk("IMPERIAL",17), mk("ISFAHAN SILK",11)] }
+    ],
+    meta: { editPassword: DEFAULT_PASSWORD }
+  };
+}
+
+let store = null;
+let unlocked = false;
+let openSizes = new Set();
+let undoStack = [];
+let redoStack = [];
+let applyingRemote = false; // чтобы не триггерить запись в ответ на собственное же обновление
+
+function setSyncStatus(text, isErr){
+  const el = document.getElementById("syncStatus");
+  el.textContent = text;
+  el.className = "sync-status" + (isErr ? " err" : "");
+}
+
+// ---- облако (Firestore) ----
+async function loadShared(){
+  try{
+    const snap = await window.__fb.getDoc(window.__fb.docRef);
+    return snap.exists() ? snap.data().payload : null;
+  }catch(e){
+    console.error(e);
+    setSyncStatus("Не удалось подключиться к базе — проверьте firebaseConfig.", true);
+    return null;
+  }
+}
+async function saveShared(value){
+  try{
+    await window.__fb.setDoc(window.__fb.docRef, { payload: value, updatedAt: Date.now() });
+    setSyncStatus("Сохранено в облаке ✓");
+  }catch(e){
+    console.error(e);
+    setSyncStatus("Ошибка сохранения — изменение могло не долететь до базы.", true);
+  }
+}
+function listenShared(){
+  window.__fb.onSnapshot(window.__fb.docRef, (snap) => {
+    if(!snap.exists()) return;
+    const incoming = snap.data().payload;
+    if(JSON.stringify(incoming) === JSON.stringify(store)) return; // наше же изменение, уже применено
+    applyingRemote = true;
+    store = incoming;
+    setSyncStatus("Обновлено другим участником · " + new Date().toLocaleTimeString());
+    render();
+    applyingRemote = false;
+  }, (err) => {
+    console.error(err);
+    setSyncStatus("Соединение с базой прервано.", true);
+  });
+}
+
+// ---- локальное (только для этого устройства/браузера — не влияет на общие данные) ----
+function loadLocal(key, fallback){
+  try{
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : fallback;
+  }catch(e){ return fallback; }
+}
+function saveLocal(key, value){
+  try{ localStorage.setItem(key, JSON.stringify(value)); }catch(e){}
+}
+
+function sortKey(label){
+  const parts = label.split("x").map(s => parseFloat(s) || 0);
+  return [-(parts[0]||0), -(parts[1]||0)];
+}
+function cssSafe(s){ return s.replace(/[^a-zA-Z0-9]/g, "_"); }
+function escapeJs(s){ return String(s).replace(/'/g, "\\'"); }
+function escapeHtml(s){ return String(s||"").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+function normSize(s){ return s.trim().replace(/\s+/g,"").replace(/[xXхХ*]/g,"x"); }
+
+async function init(){
+  setSyncStatus("Подключение к базе…");
+  store = await loadShared();
+  if(!store){
+    store = seedStore();
+    await saveShared(store);
+  }
+  listenShared();
+  unlocked = loadLocal(LOCAL_UNLOCK_KEY, false);
+  openSizes = new Set(loadLocal(LOCAL_OPEN_KEY, []));
+  paintMode();
+  render();
+}
+
+function paintMode(){
+  document.getElementById("gate").style.display = unlocked ? "none" : "block";
+  document.getElementById("toolbar").style.display = unlocked ? "flex" : "none";
+  document.getElementById("historyBar").style.display = unlocked ? "flex" : "none";
+  document.getElementById("viewerSearchWrap").style.display = unlocked ? "none" : "block";
+  const badge = document.getElementById("modeBadge");
+  badge.innerHTML = unlocked
+    ? `<span class="mode-badge mode-edit">РЕЖИМ РЕДАКТИРОВАНИЯ</span>`
+    : (document.getElementById("gate").style.display === "none"
+        ? `<span class="mode-badge mode-view">ТОЛЬКО ПРОСМОТР</span>` : "");
+  document.getElementById("footerNote").textContent = unlocked
+    ? "Данные общие для всех, кто открывает эту ссылку, и обновляются в реальном времени."
+    : "Вы в режиме просмотра. Изменения редактора появляются здесь автоматически.";
+}
+
+function showModal({message, okText, cancelText}){
+  return new Promise(resolve => {
+    const overlay = document.getElementById("modalOverlay");
+    const msgEl = document.getElementById("modalMsg");
+    const actionsEl = document.getElementById("modalActions");
+    msgEl.textContent = message;
+    actionsEl.innerHTML = "";
+    if(cancelText){
+      const cancelBtn = document.createElement("button");
+      cancelBtn.className = "modal-cancel";
+      cancelBtn.textContent = cancelText;
+      cancelBtn.onclick = () => { overlay.style.display = "none"; resolve(false); };
+      actionsEl.appendChild(cancelBtn);
+    }
+    const okBtn = document.createElement("button");
+    okBtn.className = "btn-primary";
+    okBtn.textContent = okText || "Ок";
+    okBtn.onclick = () => { overlay.style.display = "none"; resolve(true); };
+    actionsEl.appendChild(okBtn);
+    overlay.style.display = "flex";
+  });
+}
+function showAlert(message){ return showModal({message, okText:"Ок"}); }
+function showConfirm(message){ return showModal({message, okText:"Удалить", cancelText:"Отмена"}); }
+
+async function tryUnlock(){
+  const val = document.getElementById("editCode").value;
+  if(val === (store.meta.editPassword || DEFAULT_PASSWORD)){
+    unlocked = true;
+    saveLocal(LOCAL_UNLOCK_KEY, true);
+    paintMode();
+    render();
+  } else {
+    await showAlert("Неверный код");
+  }
+}
+
+function continueAsViewer(){
+  document.getElementById("gate").style.display = "none";
+  document.getElementById("modeBadge").innerHTML = `<span class="mode-badge mode-view">ТОЛЬКО ПРОСМОТР</span>`;
+  document.getElementById("viewerSearchWrap").style.display = "block";
+  render();
+}
+
+function currentQuery(){
+  const el = unlocked ? document.getElementById("search") : document.getElementById("searchViewer");
+  return el ? el.value.trim().toLowerCase() : "";
+}
+
+function snapshot(){ return JSON.parse(JSON.stringify(store)); }
+function pushHistory(){
+  undoStack.push(snapshot());
+  if(undoStack.length > 50) undoStack.shift();
+  redoStack = [];
+  updateHistButtons();
+}
+function updateHistButtons(){
+  const u = document.getElementById("undoBtn");
+  const r = document.getElementById("redoBtn");
+  if(u) u.disabled = undoStack.length === 0;
+  if(r) r.disabled = redoStack.length === 0;
+}
+async function undo(){
+  if(undoStack.length === 0) return;
+  redoStack.push(snapshot());
+  store = undoStack.pop();
+  await saveShared(store);
+  updateHistButtons();
+  render();
+}
+async function redo(){
+  if(redoStack.length === 0) return;
+  undoStack.push(snapshot());
+  store = redoStack.pop();
+  await saveShared(store);
+  updateHistButtons();
+  render();
+}
+
+function findSize(sizeId){ return store.sizes.find(s => s.id === sizeId); }
+function findColl(sizeId, collId){ return findSize(sizeId).collections.find(c => c.id === collId); }
+
+function render(){
+  const q = currentQuery();
+  const container = document.getElementById("sizes");
+  container.innerHTML = "";
+
+  const sortedSizes = [...store.sizes].sort((a,b) => {
+    const ka = sortKey(a.label), kb = sortKey(b.label);
+    return ka[0]-kb[0] || ka[1]-kb[1];
+  });
+
+  let shown = 0;
+
+  sortedSizes.forEach(sizeObj => {
+    const collections = unlocked ? sizeObj.collections : sizeObj.collections.filter(c => (c.qty||0) > 0);
+    const labelMatches = sizeObj.label.toLowerCase().includes(q);
+    const filtered = q
+      ? collections.filter(c =>
+          labelMatches ||
+          c.name.toLowerCase().includes(q) ||
+          (c.code||"").toLowerCase().includes(q) ||
+          (c.color||"").toLowerCase().includes(q) ||
+          (c.customId||"").toLowerCase().includes(q))
+      : collections;
+
+    if(q && filtered.length === 0 && !labelMatches) return;
+    if(!unlocked && filtered.length === 0) return;
+    shown++;
+
+    const block = document.createElement("div");
+    block.className = "size-block" + (openSizes.has(sizeObj.id) ? " open" : "");
+
+    const head = document.createElement("div");
+    head.className = "size-head";
+    head.innerHTML = `
+      ${unlocked ? `
+        <input class="size-title-input" type="text" value="${escapeHtml(sizeObj.label)}"
+          onclick="event.stopPropagation()"
+          onchange="renameSize('${escapeJs(sizeObj.id)}', this.value)">
+      ` : `<div class="size-title">${escapeHtml(sizeObj.label)}</div>`}
+      <div class="head-right">
+        <div class="size-meta">${filtered.length} коллекц${filtered.length===1?'ия':'ии'}</div>
+        ${unlocked ? `<button class="icon-btn danger" title="Удалить размер" onclick="event.stopPropagation(); deleteSize('${escapeJs(sizeObj.id)}')">✕</button>` : ""}
+        <div class="chevron">▶</div>
+      </div>
+    `;
+    head.onclick = (e) => { if(e.target.closest('.icon-btn') || e.target.closest('.size-title-input')) return; toggleSize(sizeObj.id); };
+    block.appendChild(head);
+
+    const body = document.createElement("div");
+    body.className = "size-body";
+    const list = document.createElement("div");
+    list.className = "coll-list";
+
+    [...filtered].sort((a,b) => (b.qty||0)-(a.qty||0)).forEach(c => {
+      const row = document.createElement("div");
+      row.className = "coll-row";
+      const metaBits = [];
+      if(c.code) metaBits.push(`код ${escapeHtml(c.code)}`);
+      if(c.color) metaBits.push(escapeHtml(c.color));
+      if(c.customId) metaBits.push(`ID ${escapeHtml(c.customId)}`);
+
+      row.innerHTML = `
+        <div class="coll-top">
+          ${unlocked
+            ? `<input class="coll-name-input" type="text" value="${escapeHtml(c.name)}" onchange="renameCollection('${escapeJs(sizeObj.id)}','${escapeJs(c.id)}', this.value)">`
+            : `<div class="coll-name">${escapeHtml(c.name)}</div>`}
+          ${unlocked ? `<button class="icon-btn danger" title="Удалить" onclick="deleteCollection('${escapeJs(sizeObj.id)}','${escapeJs(c.id)}')">✕</button>` : ""}
+        </div>
+        <div class="coll-meta-row">
+          ${unlocked ? `
+            <input class="meta-input" type="text" placeholder="Code" value="${escapeHtml(c.code)}" onchange="setField('${escapeJs(sizeObj.id)}','${escapeJs(c.id)}','code', this.value)">
+            <input class="meta-input" type="text" placeholder="Color" value="${escapeHtml(c.color)}" onchange="setField('${escapeJs(sizeObj.id)}','${escapeJs(c.id)}','color', this.value)">
+            <input class="meta-input" type="text" placeholder="ID" value="${escapeHtml(c.customId)}" onchange="setField('${escapeJs(sizeObj.id)}','${escapeJs(c.id)}','customId', this.value)">
+            <input class="qty-input" type="number" min="0" value="${c.qty||0}" onchange="setQty('${escapeJs(sizeObj.id)}','${escapeJs(c.id)}', this.value)">
+            <span class="unit">шт.</span>
+          ` : `
+            <span class="meta-view">${metaBits.join(" · ")}</span>
+            <span class="qty-view">${c.qty||0} шт.</span>
+          `}
+        </div>
+      `;
+      list.appendChild(row);
+    });
+    body.appendChild(list);
+
+    if(unlocked){
+      const addRow = document.createElement("div");
+      addRow.className = "add-coll-row";
+      addRow.innerHTML = `
+        <div class="line1">
+          <input type="text" placeholder="Название коллекции" id="newname-${cssSafe(sizeObj.id)}">
+          <input type="number" min="0" value="1" id="newqty-${cssSafe(sizeObj.id)}">
+        </div>
+        <div class="line2">
+          <input type="text" placeholder="Code" id="newcode-${cssSafe(sizeObj.id)}">
+          <input type="text" placeholder="Color" id="newcolor-${cssSafe(sizeObj.id)}">
+          <input type="text" placeholder="ID" id="newid-${cssSafe(sizeObj.id)}">
+          <button class="btn-primary" onclick="addCollection('${escapeJs(sizeObj.id)}')">+ Добавить</button>
+        </div>
+      `;
+      body.appendChild(addRow);
+    }
+
+    block.appendChild(body);
+    if(openSizes.has(sizeObj.id)){
+      requestAnimationFrame(() => { body.style.maxHeight = body.scrollHeight + "px"; });
+    }
+    container.appendChild(block);
+  });
+
+  document.getElementById("emptyMsg").style.display = shown === 0 ? "block" : "none";
+  updateHistButtons();
+}
+
+function toggleSize(sizeId){
+  if(openSizes.has(sizeId)) openSizes.delete(sizeId);
+  else openSizes.add(sizeId);
+  saveLocal(LOCAL_OPEN_KEY, Array.from(openSizes));
+  render();
+}
+
+async function addSize(){
+  const inp = document.getElementById("newSize");
+  const raw = inp.value;
+  if(!raw.trim()) return;
+  const label = normSize(raw);
+  if(!/^[\d.]+x[\d.]+$/.test(label)){
+    await showAlert("Введите размер в формате 4x8 или 3.5x2.5");
+    return;
+  }
+  pushHistory();
+  const id = newId();
+  store.sizes.push({ id, label, collections: [] });
+  openSizes.add(id);
+  inp.value = "";
+  await saveShared(store);
+  saveLocal(LOCAL_OPEN_KEY, Array.from(openSizes));
+  render();
+}
+
+async function renameSize(sizeId, raw){
+  if(!raw || !raw.trim()){ render(); return; }
+  const label = normSize(raw);
+  if(!/^[\d.]+x[\d.]+$/.test(label)){
+    await showAlert("Формат должен быть вида 4x8");
+    render();
+    return;
+  }
+  const sizeObj = findSize(sizeId);
+  if(label === sizeObj.label) return;
+  pushHistory();
+  sizeObj.label = label;
+  await saveShared(store);
+  render();
+}
+
+async function deleteSize(sizeId){
+  const sizeObj = findSize(sizeId);
+  const names = sizeObj.collections.map(c => c.name);
+  const msg = names.length
+    ? `Удалить размер "${sizeObj.label}" вместе с коллекциями внутри?\n\n${names.join("\n")}`
+    : `Удалить размер "${sizeObj.label}"?`;
+  const ok = await showConfirm(msg);
+  if(!ok) return;
+  pushHistory();
+  store.sizes = store.sizes.filter(s => s.id !== sizeId);
+  openSizes.delete(sizeId);
+  await saveShared(store);
+  saveLocal(LOCAL_OPEN_KEY, Array.from(openSizes));
+  render();
+}
+
+async function addCollection(sizeId){
+  const name = document.getElementById(`newname-${cssSafe(sizeId)}`).value.trim();
+  const qty = parseInt(document.getElementById(`newqty-${cssSafe(sizeId)}`).value, 10) || 0;
+  const code = document.getElementById(`newcode-${cssSafe(sizeId)}`).value.trim();
+  const color = document.getElementById(`newcolor-${cssSafe(sizeId)}`).value.trim();
+  const customId = document.getElementById(`newid-${cssSafe(sizeId)}`).value.trim();
+  if(!name) return;
+  pushHistory();
+  findSize(sizeId).collections.push({ id: newId(), name, qty, code, color, customId });
+  await saveShared(store);
+  render();
+}
+
+async function renameCollection(sizeId, collId, raw){
+  const name = (raw||"").trim();
+  if(!name){ render(); return; }
+  const c = findColl(sizeId, collId);
+  if(name === c.name) return;
+  pushHistory();
+  c.name = name;
+  await saveShared(store);
+  render();
+}
+
+async function deleteCollection(sizeId, collId){
+  pushHistory();
+  const sizeObj = findSize(sizeId);
+  sizeObj.collections = sizeObj.collections.filter(c => c.id !== collId);
+  await saveShared(store);
+  render();
+}
+
+async function setQty(sizeId, collId, value){
+  pushHistory();
+  findColl(sizeId, collId).qty = Math.max(0, parseInt(value, 10) || 0);
+  await saveShared(store);
+  render();
+}
+
+async function setField(sizeId, collId, field, value){
+  pushHistory();
+  findColl(sizeId, collId)[field] = value.trim();
+  await saveShared(store);
+}
+
+// ждём, пока Firebase-модуль выше подключится
+window.addEventListener("load", () => {
+  const check = setInterval(() => {
+    if(window.__fb){
+      clearInterval(check);
+      init();
+    }
+  }, 50);
+});
+</script>
+</body>
+</html>
