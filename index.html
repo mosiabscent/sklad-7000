@@ -2,6 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Склад ковров — по размерам</title>
 <style>
   :root{
@@ -135,12 +136,58 @@
   .modal-actions{display:flex; gap:8px; justify-content:flex-end;}
   .modal-cancel{background:var(--panel2); color:var(--text); border:1px solid var(--line);}
   .modal-cancel:hover{background:#262b36;}
+
+  /* ===== Телефон ===== */
+  @media (max-width: 640px){
+    body{padding:18px 12px 60px;}
+    h1{font-size:20px;}
+    .sub{font-size:13px;}
+
+    .toolbar{gap:8px;}
+    .search{min-width:0; width:100%; font-size:16px; padding:12px 14px;}
+    .add-size-form{width:100%;}
+    .add-size-form input{flex:1; width:auto; font-size:16px; padding:12px 14px;}
+    .history-bar{flex-wrap:wrap;}
+    .hist-btn{font-size:14px; padding:11px 14px;}
+    button{font-size:15px; padding:11px 16px;}
+    .gate{max-width:none;}
+    .gate input{font-size:16px; padding:12px;}
+
+    .size-head{padding:16px;}
+    .size-title{font-size:19px;}
+    .size-title-input{font-size:19px; width:110px; padding:4px 0;}
+    .size-meta{font-size:13px;}
+    .chevron{font-size:16px;}
+    .icon-btn{font-size:18px; padding:8px 12px; min-width:42px; min-height:42px;}
+
+    .coll-row{padding:12px 14px; gap:10px;}
+    .coll-name, .coll-name-input{font-size:17px;}
+    .coll-name-input{padding:6px 0;}
+    .coll-meta-row{flex-wrap:wrap; gap:8px;}
+    .meta-input{flex:1 1 28%; width:auto; font-size:16px; padding:11px 10px; border-radius:8px;}
+    .qty-input{width:96px; font-size:17px; padding:11px 10px; border-radius:8px; margin-left:auto;}
+    .unit{font-size:14px;}
+    .meta-view{font-size:14px; white-space:normal;}
+    .qty-view{font-size:17px;}
+
+    .add-coll-row{padding:14px; gap:10px;}
+    .add-coll-row .line1, .add-coll-row .line2{gap:8px;}
+    .add-coll-row .line2{flex-wrap:wrap;}
+    .add-coll-row input[type=text]{font-size:16px; padding:11px 12px; border-radius:8px;}
+    .add-coll-row .line2 input[type=text]{flex:1 1 28%; font-size:16px; padding:11px 10px;}
+    .add-coll-row input[type=number]{width:84px; font-size:16px; padding:11px 10px; border-radius:8px;}
+    .add-coll-row .btn-primary{flex:1 1 100%; padding:13px;}
+
+    .modal-box{padding:22px;}
+    .modal-msg{font-size:16px;}
+    .modal-actions button{flex:1;}
+  }
 </style>
 </head>
 <body>
 
 <h1>Склад ковров — по размерам</h1>
-<div class="sub">Размер — основной раздел, внутри — коллекции с кодом, цветом и ID.</div>
+<div class="sub">Размер — основной раздел, внутри — коллекции с кодом, цветом и ID (по желанию). Одинаковые названия никогда не объединяются автоматически.</div>
 <div id="modeBadge"></div>
 <div id="syncStatus" class="sync-status">Подключение к базе…</div>
 
@@ -164,6 +211,9 @@
 <div id="historyBar" class="history-bar" style="display:none;">
   <button class="hist-btn" id="undoBtn" onclick="undo()" disabled>↶ Отменить</button>
   <button class="hist-btn" id="redoBtn" onclick="redo()" disabled>↷ Вернуть</button>
+  <button class="hist-btn" onclick="downloadBackup()">⬇ Копия</button>
+  <button class="hist-btn" onclick="document.getElementById('backupFile').click()">⬆ Загрузить</button>
+  <input type="file" id="backupFile" accept="application/json" style="display:none" onchange="loadBackup(event)">
 </div>
 
 <div id="viewerSearchWrap" style="display:none; max-width:720px; margin-bottom:18px;">
@@ -191,13 +241,13 @@
   } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 
   // ⬇⬇⬇ ЗАМЕНИТЕ на свои данные из Firebase Console ⬇⬇⬇
-  const firebaseConfig = {
+   const firebaseConfig = {
     apiKey: "AIzaSyBOlWHKt5G2owPr2k8VVMDVag7VTmvhilk",
-  authDomain: "sklad-osh-7000.firebaseapp.com",
-  projectId: "sklad-osh-7000",
-  storageBucket: "sklad-osh-7000.firebasestorage.app",
-  messagingSenderId: "643913341855",
-  appId: "1:643913341855:web:d66467f828232c2a263baa"
+    authDomain: "sklad-osh-7000.firebaseapp.com",
+    projectId: "sklad-osh-7000",
+    storageBucket: "sklad-osh-7000.firebasestorage.app",
+    messagingSenderId: "643913341855",
+    appId: "1:643913341855:web:d66467f828232c2a263baa"
   };
   // ⬆⬆⬆ ЗАМЕНИТЕ на свои данные из Firebase Console ⬆⬆⬆
 
@@ -212,7 +262,7 @@
 <script>
 const LOCAL_UNLOCK_KEY = "warehouse-unlocked-device";
 const LOCAL_OPEN_KEY = "warehouse-open-sizes";
-const DEFAULT_PASSWORD = "1234";
+const DEFAULT_PASSWORD = "quadz";
 
 let nextId = 1;
 function newId(){ return "id" + (nextId++) + "_" + Math.random().toString(36).slice(2,7); }
@@ -237,6 +287,7 @@ let openSizes = new Set();
 let undoStack = [];
 let redoStack = [];
 let applyingRemote = false; // чтобы не триггерить запись в ответ на собственное же обновление
+let dbReady = false; // true только после УСПЕШНОГО чтения из базы — до этого запись запрещена
 
 function setSyncStatus(text, isErr){
   const el = document.getElementById("syncStatus");
@@ -248,14 +299,15 @@ function setSyncStatus(text, isErr){
 async function loadShared(){
   try{
     const snap = await window.__fb.getDoc(window.__fb.docRef);
-    return snap.exists() ? snap.data().payload : null;
+    return { ok: true, data: snap.exists() ? snap.data().payload : null };
   }catch(e){
     console.error(e);
-    setSyncStatus("Не удалось подключиться к базе — проверьте firebaseConfig.", true);
-    return null;
+    setSyncStatus("Не удалось прочитать базу (" + (e.code || "ошибка") + "). Ничего не записано.", true);
+    return { ok: false };
   }
 }
 async function saveShared(value){
+  if(!dbReady) return;
   try{
     await window.__fb.setDoc(window.__fb.docRef, { payload: value, updatedAt: Date.now() });
     setSyncStatus("Сохранено в облаке ✓");
@@ -302,9 +354,18 @@ function normSize(s){ return s.trim().replace(/\s+/g,"").replace(/[xXхХ*]/g,"x
 
 async function init(){
   setSyncStatus("Подключение к базе…");
-  store = await loadShared();
-  if(!store){
-    store = seedStore();
+  const res = await loadShared();
+  if(!res.ok){
+    document.getElementById("sizes").innerHTML =
+      '<div class="empty">Не удалось загрузить данные из базы. Ничего не изменено и не сохранено.<br><br>' +
+      '<button class="btn-primary" onclick="init()">Повторить</button></div>';
+    return;
+  }
+  dbReady = true;
+  if(res.data){
+    store = res.data;
+  } else {
+    store = seedStore();   // только если документа в базе действительно нет
     await saveShared(store);
   }
   listenShared();
@@ -406,6 +467,35 @@ async function redo(){
   await saveShared(store);
   updateHistButtons();
   render();
+}
+
+function downloadBackup(){
+  const blob = new Blob([JSON.stringify(store, null, 2)], {type:"application/json"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "sklad-backup-" + new Date().toISOString().slice(0,10) + ".json";
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+}
+function loadBackup(event){
+  const file = event.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    try{
+      const parsed = JSON.parse(e.target.result);
+      if(!Array.isArray(parsed.sizes)) throw new Error("bad format");
+      const ok = await showModal({message:"Заменить текущие данные содержимым файла?", okText:"Заменить", cancelText:"Отмена"});
+      if(!ok) return;
+      pushHistory();
+      store = parsed;
+      await saveShared(store);
+      render();
+    }catch(err){ await showAlert("Не удалось прочитать файл — это точно копия из этого склада?"); }
+  };
+  reader.readAsText(file);
+  event.target.value = "";
 }
 
 function findSize(sizeId){ return store.sizes.find(s => s.id === sizeId); }
