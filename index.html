@@ -577,7 +577,7 @@ function render(){
       const row = document.createElement("div");
       row.className = "coll-row";
       const metaBits = [];
-      if(c.code) metaBits.push(`код ${escapeHtml(c.code)}`);
+      if(c.code) metaBits.push(escapeHtml(c.code));
       if(c.color) metaBits.push(escapeHtml(c.color));
       if(c.customId) metaBits.push(`ID ${escapeHtml(c.customId)}`);
 
