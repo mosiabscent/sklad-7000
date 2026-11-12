@@ -192,15 +192,16 @@ function logoutEditor(){
   paintMode();
   render();
 }
-(function(){
+window.addEventListener("DOMContentLoaded", function(){
   const bar = document.getElementById("historyBar");
+  if(!bar) return;
   const b = document.createElement("button");
   b.className = "hist-btn";
   b.style.marginLeft = "auto";
   b.textContent = "🔒 Выйти";
   b.onclick = logoutEditor;
   bar.appendChild(b);
-})();
+});
 </script>
 <body>
   
