@@ -579,7 +579,7 @@ function render(){
       const metaBits = [];
       if(c.code) metaBits.push(escapeHtml(c.code));
       if(c.color) metaBits.push(escapeHtml(c.color));
-      if(c.customId) metaBits.push(`ID ${escapeHtml(c.customId)}`);
+      if(c.customId) metaBits.push(escapeHtml(c.customId));
 
       row.innerHTML = `
         <div class="coll-top">
